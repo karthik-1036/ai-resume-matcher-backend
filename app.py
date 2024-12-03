@@ -20,12 +20,9 @@ if os.environ.get('FLASK_ENV') == 'production':
     # In production, only allow requests from your Netlify domain
     CORS(app, resources={
         r"/*": {
-            "origins": [
-                "https://your-netlify-app.netlify.app",  # Replace with your Netlify domain
-                "http://localhost:3000"  # Keep local development working
-            ],
-            "methods": ["OPTIONS", "GET", "POST"],
-            "allow_headers": ["Content-Type"]
+            "origins": ["https://airesumeanalyzer.netlify.app"],
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
         }
     })
 else:
