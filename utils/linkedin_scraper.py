@@ -5,13 +5,41 @@ from urllib.parse import quote_plus
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def create_linkedin_url(query, location=None):
+    """Create a LinkedIn search URL with proper encoding"""
+    try:
+        # Ensure the query is a string and not empty
+        if not query or not isinstance(query, (str, int, float)):
+            return "https://www.linkedin.com/jobs/search/?keywords=software%20developer"
+            
+        # Clean and encode the query
+        cleaned_query = str(query).strip()
+        if not cleaned_query:
+            return "https://www.linkedin.com/jobs/search/?keywords=software%20developer"
+            
+        # Create the base URL with encoded query
+        url = f"https://www.linkedin.com/jobs/search/?keywords={quote_plus(cleaned_query)}"
+        
+        # Add location if provided
+        if location and str(location).strip():
+            url += f"&location={quote_plus(str(location).strip())}"
+            
+        logger.info(f"Generated LinkedIn URL: {url}")
+        return url
+    except Exception as e:
+        logger.error(f"Error creating LinkedIn URL: {str(e)}")
+        return "https://www.linkedin.com/jobs/search/?keywords=software%20developer"
+
 def search_jobs(skills, location=None):
     """Search for jobs based on skills and location"""
     try:
-        # Ensure skills is a list of strings and clean them
+        # Ensure skills is a list of strings
         if isinstance(skills, str):
             skills = [skills]
-        
+        elif not isinstance(skills, list):
+            logger.error(f"Invalid skills type: {type(skills)}")
+            return get_default_role(location)
+            
         # Clean and validate skills
         cleaned_skills = []
         for skill in skills:
@@ -23,7 +51,7 @@ def search_jobs(skills, location=None):
         if not cleaned_skills:
             logger.warning("No valid skills provided")
             return get_default_role(location)
-        
+            
         recommended_roles = []
         
         # Create specialized role recommendations based on individual skills
@@ -76,13 +104,15 @@ def search_jobs(skills, location=None):
             combined_query = " ".join(top_skills)
             url = create_linkedin_url(combined_query, location)
             
-            recommended_roles.append({
+            role = {
                 "title": "Senior Technology Professional",
                 "reason": f"Based on your expertise in {', '.join(top_skills)}",
                 "description": "This role combines your top technical skills, ideal for senior positions that require a diverse skill set.",
                 "requirements": [f"Strong experience in {skill}" for skill in top_skills],
                 "link": url
-            })
+            }
+            logger.info(f"Created combined skills role with URL: {url}")
+            recommended_roles.append(role)
         
         # Add specialized roles based on individual skills
         for skill in cleaned_skills[:4]:  # Use top 4 skills
@@ -90,16 +120,16 @@ def search_jobs(skills, location=None):
             url = create_linkedin_url(skill, location)
             
             if skill_lower in skill_role_mapping:
-                role = skill_role_mapping[skill_lower]
-                recommended_roles.append({
-                    "title": role["title"],
+                role_template = skill_role_mapping[skill_lower]
+                role = {
+                    "title": role_template["title"],
                     "reason": f"Matches your {skill} expertise",
-                    "description": role["description"],
-                    "requirements": role["requirements"],
+                    "description": role_template["description"],
+                    "requirements": role_template["requirements"],
                     "link": url
-                })
+                }
             else:
-                recommended_roles.append({
+                role = {
                     "title": f"{skill} Specialist",
                     "reason": f"Based on your {skill} proficiency",
                     "description": f"Specialized role focusing on {skill} development and implementation",
@@ -109,34 +139,26 @@ def search_jobs(skills, location=None):
                         "Problem-solving abilities"
                     ],
                     "link": url
-                })
+                }
             
-            logger.info(f"Created job search URL for {skill}")
+            logger.info(f"Created role for {skill} with URL: {url}")
+            recommended_roles.append(role)
         
-        return recommended_roles if recommended_roles else get_default_role(location)
+        if not recommended_roles:
+            logger.warning("No roles generated, returning default role")
+            return get_default_role(location)
+            
+        logger.info(f"Successfully generated {len(recommended_roles)} job recommendations")
+        return recommended_roles
 
     except Exception as e:
         logger.error(f"Error in job search: {str(e)}")
         return get_default_role(location)
 
-def create_linkedin_url(query, location=None):
-    """Create a LinkedIn search URL with proper encoding"""
-    try:
-        base_url = "https://www.linkedin.com/jobs/search/?"
-        params = [f"keywords={quote_plus(str(query).strip())}"]
-        
-        if location and str(location).strip():
-            params.append(f"location={quote_plus(str(location).strip())}")
-        
-        return base_url + "&".join(params)
-    except Exception as e:
-        logger.error(f"Error creating LinkedIn URL: {str(e)}")
-        return "https://www.linkedin.com/jobs/search/?keywords=software%20developer"
-
 def get_default_role(location=None):
     """Return default role with proper URL"""
     url = create_linkedin_url("software developer", location)
-    return [{
+    default_role = {
         "title": "Software Developer",
         "reason": "Based on your technical background",
         "description": "General software development role matching your technical skills",
@@ -146,4 +168,6 @@ def get_default_role(location=None):
             "Problem-solving abilities"
         ],
         "link": url
-    }]
+    }
+    logger.info(f"Created default role with URL: {url}")
+    return [default_role]

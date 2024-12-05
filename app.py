@@ -92,24 +92,40 @@ def analyze():
                 skills = [str(skill).strip() for skill in analysis['skills'] if skill]
                 if skills:
                     jobs = search_jobs(skills, location)
-                    if jobs:
-                        analysis['recommended_roles'] = jobs
+                    if jobs and isinstance(jobs, list):
+                        # Ensure each job has a valid link
+                        valid_jobs = []
+                        for job in jobs:
+                            if isinstance(job, dict) and 'link' in job and job['link']:
+                                valid_jobs.append(job)
+                            else:
+                                logger.error(f"Invalid job structure: {job}")
+                        
+                        if valid_jobs:
+                            analysis['recommended_roles'] = valid_jobs
+                            logger.info(f"Added {len(valid_jobs)} valid job recommendations")
+                        else:
+                            logger.warning("No valid jobs found, using default")
+                            analysis['recommended_roles'] = [{
+                                "title": "Software Developer",
+                                "reason": "Based on your technical background",
+                                "description": "General software development role matching your technical skills",
+                                "requirements": [
+                                    "Software development experience",
+                                    "Programming proficiency",
+                                    "Problem-solving abilities"
+                                ],
+                                "link": "https://www.linkedin.com/jobs/search/?keywords=software%20developer"
+                            }]
                     else:
-                        analysis['recommended_roles'] = [{
-                            "title": "Software Development Jobs",
-                            "reason": "General technology positions",
-                            "link": "https://www.linkedin.com/jobs/search/?keywords=software%20developer"
-                        }]
-                    logger.info(f"Job search completed successfully with {len(jobs)} results")
+                        logger.error(f"Invalid jobs response: {jobs}")
+                        analysis['recommended_roles'] = []
                 else:
                     logger.warning("No valid skills found for job search")
+                    analysis['recommended_roles'] = []
             except Exception as e:
                 logger.error(f"Error searching jobs: {str(e)}")
-                analysis['recommended_roles'] = [{
-                    "title": "Software Development Jobs",
-                    "reason": "General technology positions",
-                    "link": "https://www.linkedin.com/jobs/search/?keywords=software%20developer"
-                }]
+                analysis['recommended_roles'] = []
         end_time = time.time()
         processing_time = end_time - start_time
         logger.info(f"Analysis completed successfully in {processing_time:.2f} seconds")
