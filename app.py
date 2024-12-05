@@ -88,14 +88,28 @@ def analyze():
         # Search for jobs if location is provided
         if location and 'skills' in analysis:
             try:
-                jobs = search_jobs(analysis['skills'], location)
-                if jobs:
-                    analysis['recommended_roles'] = jobs
-                logger.info("Job search completed successfully")
+                # Ensure skills is a list of strings
+                skills = [str(skill).strip() for skill in analysis['skills'] if skill]
+                if skills:
+                    jobs = search_jobs(skills, location)
+                    if jobs:
+                        analysis['recommended_roles'] = jobs
+                    else:
+                        analysis['recommended_roles'] = [{
+                            "title": "Software Development Jobs",
+                            "reason": "General technology positions",
+                            "link": "https://www.linkedin.com/jobs/search/?keywords=software%20developer"
+                        }]
+                    logger.info(f"Job search completed successfully with {len(jobs)} results")
+                else:
+                    logger.warning("No valid skills found for job search")
             except Exception as e:
                 logger.error(f"Error searching jobs: {str(e)}")
-                analysis['recommended_roles'] = []
-
+                analysis['recommended_roles'] = [{
+                    "title": "Software Development Jobs",
+                    "reason": "General technology positions",
+                    "link": "https://www.linkedin.com/jobs/search/?keywords=software%20developer"
+                }]
         end_time = time.time()
         processing_time = end_time - start_time
         logger.info(f"Analysis completed successfully in {processing_time:.2f} seconds")
